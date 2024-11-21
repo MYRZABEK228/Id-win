@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="kk">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Шексіз Лабиринт</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background-color: #1e1e2e;
+      color: white;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+    }
+    #mazeContainer {
+      position: relative;
+      width: 400px;
+      height: 400px;
+      background-color: white;
+      display: grid;
+      grid-template-columns: repeat(10, 1fr);
+      grid-template-rows: repeat(10, 1fr);
+      border: 5px solid black;
+    }
+    .cell {
+      width: 100%;
+      height: 100%;
+      box-sizing: border-box;
+      border: 1px solid #ddd;
+    }
+    .wall {
+      background-color: black;
+    }
+    .start {
+      background-color: green;
+    }
+    .end {
+      background-color: red;
+    }
+    #timer {
+      font-size: 1.5em;
+      margin-bottom: 20px;
+    }
+    #gameOver {
+      display: none;
+      text-align: center;
+    }
+    #gameOver button {
+      margin-top: 20px;
+      padding: 10px 20px;
+      font-size: 1em;
+      background-color: #3498db;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    #gameOver button:hover {
+      background-color: #2980b9;
+    }
+  </style>
+</head>
+<body>
+  <div id="timer">Уақыт: <span id="timeLeft">30</span></div>
+  <div id="mazeContainer"></div>
+  <div id="gameOver">
+    <h1>Ойын аяқталды!</h1>
+    <p>Сіздің ұпайыңыз: <span id="finalScore">0</span></p>
+    <button onclick="startGame()">Қайта бастау</button>
+  </div>
+
+  <script>
+    const mazeContainer = document.getElementById("mazeContainer");
+    const timerDisplay = document.getElementById("timeLeft");
+    const gameOverDisplay = document.getElementById("gameOver");
+    const finalScoreDisplay = document.getElementById("finalScore");
+
+    let mazeSize = 10;
+    let timer = 30;
+    let playerPosition = { x: 0, y: 0 };
+    let endPosition = { x: 9, y: 9 };
+    let isGameOver = false;
+    let score = 0;
+
+    function generateMaze() {
+      mazeContainer.innerHTML = "";
+      mazeContainer.style.gridTemplateColumns = `repeat(${mazeSize}, 1fr)`;
+      mazeContainer.style.gridTemplateRows = `repeat(${mazeSize}, 1fr)`;
+
+      for (let i = 0; i < mazeSize * mazeSize; i++) {
+        const cell = document.createElement("div");
+        cell.classList.add("cell");
+
+        if (Math.random() < 0.3) {
+          cell.classList.add("wall");
+        }
+
+        mazeContainer.appendChild(cell);
+      }
+
+      // Set start and end points
+      const startCell = getCell(0, 0);
+      const endCell = getCell(mazeSize - 1, mazeSize - 1);
+      startCell.classList.remove("wall");
+      startCell.classList.add("start");
+      endCell.classList.remove("wall");
+      endCell.classList.add("end");
+
+      playerPosition = { x: 0, y: 0 };
+      endPosition = { x: mazeSize - 1, y: mazeSize - 1 };
+    }
+
+    function getCell(x, y) {
+      return mazeContainer.children[y * mazeSize + x];
+    }
+
+    function movePlayer(dx, dy) {
+      if (isGameOver) return;
+
+      const newX = playerPosition.x + dx;
+      const newY = playerPosition.y + dy;
+
+      if (
+        newX >= 0 &&
+        newX < mazeSize &&
+        newY >= 0 &&
+        newY < mazeSize &&
+        !getCell(newX, newY).classList.contains("wall")
+      ) {
+        getCell(playerPosition.x, playerPosition.y).classList.remove("start");
+        playerPosition = { x: newX, y: newY };
+        getCell(newX, newY).classList.add("start");
+
+        if (newX === endPosition.x && newY === endPosition.y) {
+          score++;
+          mazeSize++;
+          timer += 10;
+          generateMaze();
+        }
+      }
+    }
+
+    function startTimer() {
+      const timerInterval = setInterval(() => {
+        if (isGameOver) {
+          clearInterval(timerInterval);
+          return;
+        }
+
+        timer--;
+        timerDisplay.textContent = timer;
+
+        if (timer <= 0) {
+          endGame();
+        }
+      }, 1000);
+    }
+
+    function endGame() {
+      isGameOver = true;
+      gameOverDisplay.style.display = "block";
+      finalScoreDisplay.textContent = score;
+    }
+
+    function startGame() {
+      isGameOver = false;
+      score = 0;
+      timer = 30;
+      mazeSize = 10;
+      gameOverDisplay.style.display = "none";
+      generateMaze();
+      startTimer();
+    }
+
+    document.addEventListener("keydown", (e) => {
+      if (isGameOver) return;
+
+      switch (e.key) {
+        case "ArrowUp":
+          movePlayer(0, -1);
+          break;
+        case "ArrowDown":
+          movePlayer(0, 1);
+          break;
+        case "ArrowLeft":
+          movePlayer(-1, 0);
+          break;
+        case "ArrowRight":
+          movePlayer(1, 0);
+          break;
+      }
+    });
+
+    startGame();
+  </script>
+</body>
+</html>
