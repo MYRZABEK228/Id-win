@@ -3,199 +3,159 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Шексіз Лабиринт</title>
+  <title>Түсінік сынағы</title>
   <style>
     body {
-      margin: 0;
       font-family: Arial, sans-serif;
-      background-color: #1e1e2e;
-      color: white;
+      background-color: #f0f0f0;
       display: flex;
-      flex-direction: column;
-      align-items: center;
       justify-content: center;
+      align-items: center;
       height: 100vh;
+      margin: 0;
     }
-    #mazeContainer {
-      position: relative;
-      width: 400px;
-      height: 400px;
+    #gameContainer {
+      text-align: center;
       background-color: white;
-      display: grid;
-      grid-template-columns: repeat(10, 1fr);
-      grid-template-rows: repeat(10, 1fr);
-      border: 5px solid black;
-    }
-    .cell {
-      width: 100%;
-      height: 100%;
-      box-sizing: border-box;
-      border: 1px solid #ddd;
-    }
-    .wall {
-      background-color: black;
-    }
-    .start {
-      background-color: green;
-    }
-    .end {
-      background-color: red;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+      width: 80%;
+      max-width: 500px;
     }
     #timer {
       font-size: 1.5em;
+      margin-bottom: 10px;
+    }
+    #score {
+      font-size: 1.2em;
       margin-bottom: 20px;
     }
-    #gameOver {
-      display: none;
-      text-align: center;
+    .word {
+      font-size: 2em;
+      margin: 10px 0;
     }
-    #gameOver button {
-      margin-top: 20px;
-      padding: 10px 20px;
-      font-size: 1em;
+    .button {
       background-color: #3498db;
       color: white;
       border: none;
+      padding: 10px 20px;
+      font-size: 1.2em;
+      margin: 10px;
       border-radius: 5px;
       cursor: pointer;
     }
-    #gameOver button:hover {
+    .button:hover {
       background-color: #2980b9;
+    }
+    #gameOver {
+      display: none;
+      font-size: 2em;
+      color: red;
     }
   </style>
 </head>
 <body>
-  <div id="timer">Уақыт: <span id="timeLeft">30</span></div>
-  <div id="mazeContainer"></div>
-  <div id="gameOver">
-    <h1>Ойын аяқталды!</h1>
-    <p>Сіздің ұпайыңыз: <span id="finalScore">0</span></p>
-    <button onclick="startGame()">Қайта бастау</button>
+  <div id="gameContainer">
+    <div id="timer">Уақыт: <span id="timeLeft">30</span> секунд</div>
+    <div id="score">Ұпай: <span id="scoreValue">0</span></div>
+    <div id="wordsContainer"></div>
+    <button class="button" id="startButton">Ойынды бастау</button>
+    <div id="gameOver">Ойын аяқталды! Ұпайыңыз: <span id="finalScore">0</span></div>
   </div>
 
   <script>
-    const mazeContainer = document.getElementById("mazeContainer");
-    const timerDisplay = document.getElementById("timeLeft");
-    const gameOverDisplay = document.getElementById("gameOver");
-    const finalScoreDisplay = document.getElementById("finalScore");
+    let wordsData = [
+      { word: "Қызыл", color: "red" },
+      { word: "Көк", color: "blue" },
+      { word: "Жасыл", color: "green" },
+      { word: "Сары", color: "yellow" },
+      { word: "Қара", color: "black" },
+      { word: "Ақ", color: "white" }
+    ];
 
-    let mazeSize = 10;
-    let timer = 30;
-    let playerPosition = { x: 0, y: 0 };
-    let endPosition = { x: 9, y: 9 };
-    let isGameOver = false;
     let score = 0;
+    let timer = 30;
+    let gameInterval;
+    let wordsToChoose = 3;
+    let gameStarted = false;
 
-    function generateMaze() {
-      mazeContainer.innerHTML = "";
-      mazeContainer.style.gridTemplateColumns = `repeat(${mazeSize}, 1fr)`;
-      mazeContainer.style.gridTemplateRows = `repeat(${mazeSize}, 1fr)`;
-
-      for (let i = 0; i < mazeSize * mazeSize; i++) {
-        const cell = document.createElement("div");
-        cell.classList.add("cell");
-
-        if (Math.random() < 0.3) {
-          cell.classList.add("wall");
-        }
-
-        mazeContainer.appendChild(cell);
+    function shuffleWords(words) {
+      for (let i = words.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [words[i], words[j]] = [words[j], words[i]];
       }
-
-      // Set start and end points
-      const startCell = getCell(0, 0);
-      const endCell = getCell(mazeSize - 1, mazeSize - 1);
-      startCell.classList.remove("wall");
-      startCell.classList.add("start");
-      endCell.classList.remove("wall");
-      endCell.classList.add("end");
-
-      playerPosition = { x: 0, y: 0 };
-      endPosition = { x: mazeSize - 1, y: mazeSize - 1 };
+      return words;
     }
 
-    function getCell(x, y) {
-      return mazeContainer.children[y * mazeSize + x];
-    }
-
-    function movePlayer(dx, dy) {
-      if (isGameOver) return;
-
-      const newX = playerPosition.x + dx;
-      const newY = playerPosition.y + dy;
-
-      if (
-        newX >= 0 &&
-        newX < mazeSize &&
-        newY >= 0 &&
-        newY < mazeSize &&
-        !getCell(newX, newY).classList.contains("wall")
-      ) {
-        getCell(playerPosition.x, playerPosition.y).classList.remove("start");
-        playerPosition = { x: newX, y: newY };
-        getCell(newX, newY).classList.add("start");
-
-        if (newX === endPosition.x && newY === endPosition.y) {
-          score++;
-          mazeSize++;
-          timer += 10;
-          generateMaze();
-        }
-      }
+    function startGame() {
+      gameStarted = true;
+      score = 0;
+      timer = 30;
+      wordsToChoose = 3;
+      document.getElementById("gameOver").style.display = "none";
+      document.getElementById("startButton").style.display = "none";
+      document.getElementById("scoreValue").textContent = score;
+      updateWords();
+      startTimer();
     }
 
     function startTimer() {
-      const timerInterval = setInterval(() => {
-        if (isGameOver) {
-          clearInterval(timerInterval);
-          return;
-        }
-
-        timer--;
-        timerDisplay.textContent = timer;
-
-        if (timer <= 0) {
-          endGame();
+      gameInterval = setInterval(() => {
+        if (timer <= 0 || !gameStarted) {
+          clearInterval(gameInterval);
+          gameOver();
+        } else {
+          timer--;
+          document.getElementById("timeLeft").textContent = timer;
         }
       }, 1000);
     }
 
-    function endGame() {
-      isGameOver = true;
-      gameOverDisplay.style.display = "block";
-      finalScoreDisplay.textContent = score;
+    function gameOver() {
+      gameStarted = false;
+      document.getElementById("gameOver").style.display = "block";
+      document.getElementById("finalScore").textContent = score;
+      document.getElementById("startButton").style.display = "block";
     }
 
-    function startGame() {
-      isGameOver = false;
-      score = 0;
-      timer = 30;
-      mazeSize = 10;
-      gameOverDisplay.style.display = "none";
-      generateMaze();
-      startTimer();
-    }
-
-    document.addEventListener("keydown", (e) => {
-      if (isGameOver) return;
-
-      switch (e.key) {
-        case "ArrowUp":
-          movePlayer(0, -1);
-          break;
-        case "ArrowDown":
-          movePlayer(0, 1);
-          break;
-        case "ArrowLeft":
-          movePlayer(-1, 0);
-          break;
-        case "ArrowRight":
-          movePlayer(1, 0);
-          break;
+    function updateWords() {
+      let words = [];
+      for (let i = 0; i < wordsToChoose; i++) {
+        const randomWord = wordsData[Math.floor(Math.random() * wordsData.length)];
+        words.push(randomWord);
       }
-    });
+      words = shuffleWords(words);
 
-    startGame();
+      let wordsHtml = "";
+      words.forEach((wordData, index) => {
+        wordsHtml += `<div class="word" style="color: ${wordData.color};">${wordData.word}</div>`;
+      });
+
+      const correctWord = words[Math.floor(Math.random() * words.length)];
+
+      wordsHtml += `
+        <button class="button" onclick="checkAnswer('${correctWord.color}')">Жауап беру</button>
+        <button class="button" onclick="checkAnswer('wrong')">Қате жауап</button>
+      `;
+
+      document.getElementById("wordsContainer").innerHTML = wordsHtml;
+    }
+
+    function checkAnswer(selectedColor) {
+      if (!gameStarted) return;
+
+      const correctWord = wordsToChoose[Math.floor(Math.random() * wordsToChoose)];
+      if (selectedColor === correctWord.color) {
+        score++;
+        document.getElementById("scoreValue").textContent = score;
+        updateWords();
+      } else {
+        gameOver();
+      }
+    }
+
+    document.getElementById("startButton").addEventListener("click", startGame);
   </script>
 </body>
 </html>
